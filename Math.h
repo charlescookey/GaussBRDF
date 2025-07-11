@@ -820,6 +820,7 @@ struct Gaussian {
 	Vec4 rotation;
 	Vec3 scale;
 	float opacity;
+	Colour color; // color of the gaussian, used for rendering
 	//std::vector<float> higherSH;
 	AABB aabb; // when reading we sgoukd compute this from the position and scale
 	Mat3 covariance; // covariance matrix
