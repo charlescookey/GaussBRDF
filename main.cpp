@@ -39,7 +39,7 @@ float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
 
 	float secondPart = std::sqrtf(M_PI / (2*a));
 
-	//std::cout << "Gaussian Integral: " << firstPart << " * " << secondPart << " * " << gaussian.opacity ;
+	std::cout << "Gaussian Integral: " << firstPart << " * " << secondPart << " * " << gaussian.opacity ;
 
 	return firstPart * secondPart * gaussian.opacity;
 }
@@ -69,11 +69,13 @@ Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 			continue; // Skip if density is negligible
 		}
 
-		color += gaussian.ZeroSH * alpha * tr;
-		color = color.normalize();
+		color = color + ( gaussian.color * alpha * tr);
+		//color = color.normalize();
 		color.correct();
 		tr *= (1.0f - alpha); // Update transmittance
-		//std::cout << "density: " << density <<" alpha: " << alpha<< " Transmittance: " << tr << std::endl;
+		std::cout << " density: " << density <<" alpha: " << alpha<< " Transmittance: " << tr << std::endl;
+		std::cout << "Color: (" << color.r << ", " << color.g << ", " << color.b << ")" << " gaussian color: (" << gaussian.color.r << ", " << gaussian.color.g << ", " << gaussian.color.b << ")" << std::endl;
+
 	}
 	return color;
 }
@@ -126,6 +128,12 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 
 	for (size_t i = 0; i < elementA_prop1.size(); i++) {
 		gaussians[i].ZeroSH = Vec3(elementA_prop1[i], elementA_prop2[i], elementA_prop3[i]);
+		gaussians[i].color += gaussians[i].ZeroSH;
+		gaussians[i].color = gaussians[i].color * 0.28f;
+		gaussians[i].color += Vec3(0.5f, 0.5f, 0.5f); // Adding a base color
+
+		std::cout << "ZeroSH: " << gaussians[i].ZeroSH.x << ", " << gaussians[i].ZeroSH.y << ", " << gaussians[i].ZeroSH.z << std::endl;
+		std::cout << "Color: " << gaussians[i].color.r << ", " << gaussians[i].color.g << ", " << gaussians[i].color.b << std::endl;
 	}
 
 	elementA_prop1 = plyIn.getElement("vertex").getProperty<float>("scale_0");
@@ -228,8 +236,8 @@ int main() {
 
 	std::cout << "Parsing PLY file...\n";
 	std::vector<Gaussian> gaussians{};
-	//parsePLY("point_cloud.ply", gaussians);
-	parsePLY("perf.ply", gaussians);
+	parsePLY("point_cloud.ply", gaussians);
+	//parsePLY("perf.ply", gaussians);
 	std::cout << "Done PLY file...\n";
 
 
