@@ -158,7 +158,7 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 	elementA_prop3 = plyIn.getElement("vertex").getProperty<float>("rot_3");
 
 	for (size_t i = 0; i < elementA_prop1.size(); i++) {
-		gaussians[i].rotation = Vec4(elementA_prop1[i], elementA_prop2[i], elementA_prop3[i], elementA_prop4[i]);
+		gaussians[i].rotation = Vec3(elementA_prop1[i], elementA_prop2[i], elementA_prop3[i], elementA_prop4[i]);
 		gaussians[i].compute_gaussian_covariance();
 	}
 }

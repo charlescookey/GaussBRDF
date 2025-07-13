@@ -13,7 +13,7 @@
 
 #define SQ(x) (x * x)
 
-double sigmoid(double x) {
+float sigmoid(float x) {
 	return 1.0 / (1.0 + std::exp(-x));
 }
 
@@ -239,89 +239,6 @@ static Vec3 Min(Vec3 a, Vec3 b)
 {
 	return Vec3(a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y, a.z < b.z ? a.z : b.z);
 }
-
-
-class Vec4
-{
-public:
-	union
-	{
-		float vec[4];
-		struct { float x, y, z, w; };
-	};
-
-	Vec4() {
-		x = 0;
-		y = 0;
-		z = 0;
-		w = 0;
-	}
-
-	Vec4(const Vec3& v, float _w) {
-		x = v.x;
-		y = v.y;
-		z = v.z;
-		w = _w;
-	}
-
-	Vec4(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {
-	}
-
-	Vec4 operator+(const Vec4& v) const { return Vec4(x + v.x, y + v.y, z + v.z, w + v.w); }
-	Vec4 operator-(const Vec4& v) const { return Vec4(x - v.x, y - v.y, z - v.z, w - v.w); }
-	Vec4 operator*(const Vec4& v) const { return Vec4(x * v.x, y * v.y, z * v.z, w * v.w); }
-	Vec4 operator/(const Vec4& v) const { return Vec4(x / v.x, y / v.y, z / v.z, w / v.w); }
-
-	Vec4& operator+=(const Vec4& v) { x += v.x; y += v.y; z += v.z; w += v.w; return *this; }
-	Vec4& operator-=(const Vec4& v) { x -= v.x; y -= v.y; z -= v.z; w -= v.w; return *this; }
-	Vec4& operator*=(const Vec4& v) { x *= v.x; y *= v.y; z *= v.z; w *= v.w; return *this; }
-	Vec4& operator/=(const Vec4& v) { x /= v.x; y /= v.y; z /= v.z; w /= v.w; return *this; }
-
-	Vec4 operator*(const float v) const { return Vec4(x * v, y * v, z * v, w * v); }
-	Vec4 operator/(const float v) const { float iv = 1.f / v; return Vec4(x * iv, y * iv, z * iv, w * iv); }//???????
-
-	Vec4 operator*=(const float v) { x *= v; y *= v; z *= v; w *= v;  return*this; }
-	Vec4 operator/=(const float v) { float iv = 1.f / v; x *= iv; y *= iv; z *= iv; w *= iv; return *this; }
-
-
-	float lenght() {
-		return sqrtf(SQ(x) + SQ(y) + SQ(z) + SQ(w));
-	}
-
-	float lenghtSquare() {
-		return SQ(x) + SQ(y) + SQ(z) + SQ(w);
-	}
-
-	Vec4 normalize(void)
-	{
-		float len = 1.0f / lenght();
-		return Vec4(x * len, y * len, z * len, w * len);
-	}
-
-	float normalize_GetLength()
-	{
-		float length = lenght();
-		float len = 1.0f / length;
-		x *= len; y *= len; z *= len; w *= len;
-		return length;
-	}
-
-	void print() { std::cout << "X: " << x << " Y: " << y << " Z: " << z << " W: " << w << "\n"; }
-
-	Vec4 divivdeByW() {
-		float iw = 1.f / w;
-		return Vec4(x * iw, y * iw, z * iw, 1 * iw);
-	}
-
-	Vec3 ToCartesian() const {
-		if (w != 0.0f) {
-			return Vec3(x / w, y / w, z / w);
-		}
-		else {
-			return Vec3(x, y, z);
-		}
-	}
-};
 
 
 class Matrix
@@ -710,7 +627,7 @@ public:
 		return (*this);
 	}
 
-	static Mat3 QuartToMatrix(const Vec4& q) {
+	static Mat3 QuartToMatrix(const Vec3& q) {
 		float x = q.x, y = q.y, z = q.z, w = q.w;
 		return Mat3{
 			1 - 2 *y*y - 2*z*z,  2*x*y - 2*z*w,      2*x*z + 2*y*w,
@@ -817,7 +734,7 @@ struct Gaussian {
 	Vec3 pos;
 	Vec3 normal;
 	Vec3 ZeroSH;
-	Vec4 rotation;
+	Vec3 rotation;//Quarternions
 	Vec3 scale;
 	float opacity;
 	Colour color; // color of the gaussian, used for rendering
