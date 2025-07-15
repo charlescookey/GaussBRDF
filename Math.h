@@ -738,7 +738,7 @@ struct Gaussian {
 	Vec3 scale;
 	float opacity;
 	Colour color; // color of the gaussian, used for rendering
-	//std::vector<float> higherSH;
+	std::vector<float> higherSH;
 	AABB aabb; // when reading we sgoukd compute this from the position and scale
 	Mat3 covariance; // covariance matrix
 
@@ -758,7 +758,9 @@ struct Gaussian {
 		Mat3 scaleMatrix;
 		scaleMatrix.diagonal(_scale);
 
-		covariance = rotationMatrix * scaleMatrix * rotationMatrix.transpose() * scaleMatrix.transpose();
+		covariance = rotationMatrix * scaleMatrix;
+
+		covariance = covariance * covariance.transpose();
 	}
 
 	//for debug
