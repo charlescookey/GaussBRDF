@@ -132,7 +132,10 @@
   <ItemGroup>
     <ClInclude Include="GamesEngineeringBase.h" />
     <ClInclude Include="happly.h" />
+    <ClInclude Include="Imaging.h" />
     <ClInclude Include="Math.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="stb_image_write.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
