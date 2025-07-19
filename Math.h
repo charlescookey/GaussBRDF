@@ -753,7 +753,7 @@ struct Gaussian {
 		Mat3 rotationMatrix = Mat3::QuartToMatrix(rotation);
 
 		Vec3 _scale = scale.exponent();
-		_scale = _scale.normalize();
+		//_scale = _scale.normalize();
 		
 		Mat3 scaleMatrix;
 		scaleMatrix.diagonal(_scale);

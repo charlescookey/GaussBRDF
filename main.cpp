@@ -1,7 +1,11 @@
 #include <iostream>
+
+
+#include <fstream>
+
 #include "happly.h"
 #include "Math.h"
-#include "GamesEngineeringBase.h"
+#include "Imaging.h"
 
 
 #define SH_C0 0.28209479177387814f
@@ -56,7 +60,7 @@ float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
 
 	//std::cout << "Gaussian Integral: " << firstPart << " * " << secondPart << " * " << gaussian.opacity ;
 
-	return firstPart * secondPart * gaussian.opacity;
+	return firstPart * secondPart;
 }
 
 void evaluateSphericalHarmonics(const Vec3& viewDir, std::vector<Gaussian>& gaussians) {
@@ -102,7 +106,7 @@ void evaluateSphericalHarmonics(const Vec3& viewDir, std::vector<Gaussian>& gaus
 			+ (Vec3(gaussian.higherSH[42], gaussian.higherSH[43], gaussian.higherSH[44]) * SH_C3_6 * x * (xx - 3.0f * yy) );
 
 		gaussian.color += color;
-		gaussian.color += Vec3(0.5f);
+		//gaussian.color += Vec3(0.5f);
 
 
 		//std::cout<<"Gaussian color : (" << gaussian.color.r << ", " << gaussian.color.g << ", " << gaussian.color.b << ")" << std::endl;
@@ -123,7 +127,7 @@ Colour evaluateSphericalHarmonics(const Vec3& viewDir, Gaussian& gaussian) {
 	float yz = y * z;
 
 	Vec3 color =
-		Vec3(gaussian.higherSH[0], gaussian.higherSH[1], gaussian.higherSH[2]) * SH_C0;
+		gaussian.ZeroSH * SH_C0;
 
 	color = color
 
@@ -152,7 +156,7 @@ Colour evaluateSphericalHarmonics(const Vec3& viewDir, Gaussian& gaussian) {
 
 	Colour c;
 	c += color;
-	c += Vec3(0.5f);
+	//c += Vec3(0.5f);
 
 	//std::cout<<"Gaussian color : (" << gaussian.color.r << ", " << gaussian.color.g << ", " << gaussian.color.b << ")" << std::endl;
 	return c;
@@ -171,6 +175,8 @@ Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 	for (Gaussian& gaussian : sorted) {
 		float density = computeGaussianIntegral(ray, gaussian);
 		//float density = GaussianDensity(ray, gaussian);
+
+		density *= gaussian.opacity;
 
 		float alpha = 1.0f - exp(-density);
 		
@@ -204,6 +210,29 @@ void rendersplats() {
 	//get all inetsected gaussian
 	//compute color
 	//render color
+}
+
+void printAllGaussianDetails(std::vector<Gaussian>& gaussians) {
+
+	std::ofstream outFile("gaussians.txt");
+
+	std::cout << "Number of Gaussians: " << gaussians.size() << std::endl;
+	for (size_t i = 0; i < gaussians.size(); i++) {
+		outFile << "Gaussian " << i << ": Position: ("
+			<< gaussians[i].pos.x << ", "
+			<< gaussians[i].pos.y << ", "
+			<< gaussians[i].pos.z << "), "
+			<< "Opacity: " << gaussians[i].opacity
+			<< ", Scale: (" << gaussians[i].scale.x << ", " << gaussians[i].scale.y << ", " << gaussians[i].scale.z
+			<< "), Rotation: (" << gaussians[i].rotation.x << ", " << gaussians[i].rotation.y << ", " << gaussians[i].rotation.z << ", " << gaussians[i].rotation.w
+			<< "), ZeroSH: (" << gaussians[i].ZeroSH.x << ", " << gaussians[i].ZeroSH.y << ", " << gaussians[i].ZeroSH.z << ")"
+			<< ", HigherSH: [";
+		for (const float& sh : gaussians[i].higherSH) {
+			outFile << sh << ", ";
+		}
+		outFile << "]\n" << std::endl;
+	}
+	outFile.close();
 }
 
 void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
@@ -253,6 +282,7 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 
 	for (size_t i = 0; i < elementA_prop1.size(); i++) {
 		gaussians[i].scale = Vec3(elementA_prop1[i], elementA_prop2[i], elementA_prop3[i]);
+		//std::cout << "Scale: " << gaussians[i].scale.x << ", " << gaussians[i].scale.y << ", " << gaussians[i].scale.z << std::endl;
 		gaussians[i].compute_gaussian_aabb();
 	}
 
@@ -283,6 +313,25 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 			gaussians[i].higherSH.push_back(elementA_prop1[i]);
 		}
 	}
+
+
+	//deleete
+
+	/*for (size_t i = 0; i < elementA_prop1.size(); i++) {
+		std::cout << "Higher SH: ";
+		std::cout << gaussians[i].ZeroSH.x << ", " << gaussians[i].ZeroSH.y << ", " << gaussians[i].ZeroSH.z << std::endl;
+
+		for (float a : gaussians[i].higherSH) {
+			
+			std::cout << a << ", ";
+		}
+		std::cout << std::endl;
+
+	}*/
+
+
+	//printing to file
+
 }
 
 void testGauss() {
@@ -311,11 +360,14 @@ void testGauss() {
 }
 
 void setCamera(Camera &camera, RTCamera& viewCamera) {
-	Vec3 from(4.63008f, 2.00661f, 2.06466f);
+	//Vec3 from(4.63008f, 2.00661f, 2.06466f);
+	Vec3 from(4.63008f, 2.00661f, 20.06466f);
 	viewCamera.from = from;
 
-	float pitch = -21.5944f * (M_PI / 180.0f);  // X rotation
-	float yaw = 65.9668f * (M_PI / 180.0f);     // Y rotation
+	//float pitch = -21.5944f * (M_PI / 180.0f);  // X rotation
+	float pitch = -5.5944f * (M_PI / 180.0f);  // X rotation
+	//float yaw = 65.9668f * (M_PI / 180.0f);     // Y rotation
+	float yaw = 11.9668f * (M_PI / 180.0f);     // Y rotation
 	float roll = 0.0f * (M_PI / 180.0f);        // Z rotation
 
 	Vec3 forward(
@@ -333,15 +385,122 @@ void setCamera(Camera &camera, RTCamera& viewCamera) {
 	viewCamera.setCamera(&camera);
 }
 
+Colour testDensityandColorPrint(std::ofstream &outFile, Ray& ray ,std::vector<Gaussian>& gaussians) {
+	outFile << "Testing Density and Color for Ray: (" << ray.o.x << ", " << ray.o.y << ", " << ray.o.z << ") Direction: ("
+		<< ray.dir.x << ", " << ray.dir.y << ", " << ray.dir.z << ")" << std::endl;
+	float tr = 1.0f;
+	Colour color(0.0f, 0.0f, 0.0f);
+
+	std::vector<Gaussian> sorted = gaussians;
+	std::sort(sorted.begin(), sorted.end(), [&](const Gaussian& a, const Gaussian& b) {
+		return (a.pos - ray.o).lengthSq() < (b.pos - ray.o).lengthSq();
+		});
+
+	for (Gaussian& gaussian : sorted) {
+		float density = computeGaussianIntegral(ray, gaussian);
+
+		float alpha =density * gaussian.opacity;
+
+		alpha = 1.0f - exp(-density);
+
+
+		Vec3 viewDir = (ray.o - gaussian.pos).normalize();
+		Colour SHColor = evaluateSphericalHarmonics(viewDir, gaussian);
+
+		bool intersect = gaussian.aabb.rayAABB(ray);
+
+
+		if (tr < 0.001f) {
+			break; // Stop if transmittance is very low
+		}
+
+		if (density < 1e-6f) {
+			continue; // Skip if density is negligible
+		}
+
+		color = color + (SHColor * alpha * tr);
+		//color = color.normalize();
+		color.correct();
+		tr *= (1.0f - alpha);
+
+		outFile << "Gaussian Index: " << gaussian.index << " with density: " << density 
+			<< " at position: (" << gaussian.pos.x << ", " << gaussian.pos.y << ", " << gaussian.pos.z << ")"
+			<< " and color: ("<< SHColor.r << ", " << SHColor.g << ", " << SHColor.b << ")"
+			<< " intersect: " << (intersect ? "true" : "false") << " alpha: " << alpha << " Transmittance: " << tr << "\n\n";
+	}
+	return color;
+}
+
+void testDensityandColor(std::vector<Gaussian>& gaussians, Camera& camera, RTCamera& viewCamera, BVHNode& bvh) {
+	std::ofstream outFile("IntersectedGaussians.txt");
+
+	outFile << "Camera Origin: (" << camera.origin.x << ", " << camera.origin.y << ", " << camera.origin.z << ")"
+		<< " View Direction: (" << camera.viewDirection.x << ", " << camera.viewDirection.y << ", " << camera.viewDirection.z << ")"
+		<< " From: (" << viewCamera.from.x << ", " << viewCamera.from.y << ", " << viewCamera.from.z << ")"
+		<< " To: (" << viewCamera.to.x << ", " << viewCamera.to.y << ", " << viewCamera.to.z << ")"
+		<< " Up: (" << viewCamera.up.x << ", " << viewCamera.up.y << ", " << viewCamera.up.z << ")\n\n"
+		<< std::endl;
+	
+	
+	Ray ray = camera.generateRay(0.5, 0.5);
+	bvh.traverse(ray, gaussians);
+	Colour color = testDensityandColorPrint(outFile, ray, bvh.getIntersectedGaussians());
+	outFile << "Final Color at screen pos 0.5,0.5 :(" << color.r << ", " << color.g << ", " << color.b << ")with " << bvh.getIntersectedGaussians().size() << " intersected gaussians\n\n" << std::endl;
+
+	ray = camera.generateRay(50.5, 50.5);
+	bvh.traverse(ray, gaussians);
+	color = testDensityandColorPrint(outFile, ray, bvh.getIntersectedGaussians());
+	outFile << "Final Color at screen pos 50.5,50.5 :(" << color.r << ", " << color.g << ", " << color.b << ")with " << bvh.getIntersectedGaussians().size() << " intersected gaussians\n\n" << std::endl;
+
+	ray = camera.generateRay(100.5, 100.5);
+	bvh.traverse(ray, gaussians);
+	color = testDensityandColorPrint(outFile, ray, bvh.getIntersectedGaussians());
+	outFile << "Final Color at screen pos 100.5,100.5 :(" << color.r << ", " << color.g << ", " << color.b << ") with " << bvh.getIntersectedGaussians().size() << " intersected gaussians\n\n" << std::endl;
+
+	ray = camera.generateRay(150.5, 150.5);
+	bvh.traverse(ray, gaussians);
+	color = testDensityandColorPrint(outFile, ray, bvh.getIntersectedGaussians());
+	outFile << "Final Color at screen pos 150.5,150.5 :(" << color.r << ", " << color.g << ", " << color.b << ")with " << bvh.getIntersectedGaussians().size() << " intersected gaussians\n\n" << std::endl;
+
+	ray = camera.generateRay(199.5, 199.5);
+	bvh.traverse(ray, gaussians);
+	color = testDensityandColorPrint(outFile, ray, bvh.getIntersectedGaussians());
+	outFile << "Final Color at screen pos 199.5,199.5 :(" << color.r << ", " << color.g << ", " << color.b << ")with " << bvh.getIntersectedGaussians().size() << " intersected gaussians\n\n" << std::endl;
+
+	outFile.close();
+
+
+}
+
+
+void empty(Camera& camera, RTCamera& viewcamera) {
+	std::ofstream outFile("CameraPosition.txt");
+
+	for (int i = 0; i < 15; i++) {
+		viewcamera.left();
+	}
+	for (int i = 0; i < 5; i++) {
+		viewcamera.back();
+	}
+
+	outFile << "Camera Origin: (" << camera.origin.x << ", " << camera.origin.y << ", " << camera.origin.z << ")"
+		<< " View Direction: (" << camera.viewDirection.x << ", " << camera.viewDirection.y << ", " << camera.viewDirection.z << ")"
+		<< " From: (" << viewcamera.from.x << ", " << viewcamera.from.y << ", " << viewcamera.from.z << ")"
+		<< " To: (" << viewcamera.to.x << ", " << viewcamera.to.y << ", " << viewcamera.to.z << ")"
+		<< " Up: (" << viewcamera.up.x << ", " << viewcamera.up.y << ", " << viewcamera.up.z << ")\n\n"
+		<< std::endl;
+
+}
+
 int main() {
 	GamesEngineeringBase::Window canvas;
 	GamesEngineeringBase::Timer tim;
 
 	//can be called inside camera
-	//int width = 1024;
-	int width = 200;
-	//int height = 768;
-	int height = 200;
+	int width = 1024;
+	//int width = 200;
+	int height = 768;
+	//int height = 200;
 	canvas.create(width, height, "Charles GE");
 	float fov = 45;
 
@@ -355,13 +514,18 @@ int main() {
 	
 	setCamera(camera, viewcamera);
 
+	for (int i = 0; i < 18; i++) {
+		//viewcamera.left();
+	}
+	for (int i = 0; i < 5; i++) {
+		//viewcamera.back();
+	}
 
 	std::cout << "Parsing PLY file...\n";
 	std::vector<Gaussian> gaussians{};
-	parsePLY("point_cloud.ply", gaussians);
-	//parsePLY("perf.ply", gaussians);
+	//parsePLY("point_cloud.ply", gaussians);
+	parsePLY("perf.ply", gaussians);
 	std::cout << "Done PLY file...\n";
-
 
 	std::cout << "Building BVH...\n";
 	BVHNode bvh;
@@ -374,11 +538,19 @@ int main() {
 	GamesEngineeringBase::Timer timer;
 
 
-	std::cout << "Evaluating Spherical Harmonics:\n";
-	evaluateSphericalHarmonics(camera.viewDirection, gaussians);
+	//std::cout << "Evaluating Spherical Harmonics:\n";
+	//evaluateSphericalHarmonics(camera.viewDirection, gaussians);
+
+
+	//testDensityandColor(gaussians , camera, viewcamera,bvh);
 	
 
 	bool running = true;
+	int loopCount = 0;
+	std::string filename = "perf_image";
+	std::string fullFilename;
+	std::cout << "Rendering Gaussians...\n";
+
 	while (running)
 	{
 		canvas.checkInput();
@@ -386,7 +558,6 @@ int main() {
 
 		timer.reset();
 
-		std::cout << "Rendering Gaussians...\n";
 
 		for (unsigned int y = 0; y < height; y++)
 		{
@@ -402,11 +573,19 @@ int main() {
 
 				canvas.draw(x, y, color.r * 255.0f, color.g * 255.0f, color.b * 255.0f);
 
-				std::cout << "\nRendering pixel (" << x << ", " << y << ") - Color: ("<< color.r << ", "<< color.g << ", "<< color.b << ")\n";
+				//std::cout << "\nRendering pixel (" << x << ", " << y << ") - Color: ("<< color.r << ", "<< color.g << ", "<< color.b << ")\n";
 			}
+			//print percentage at intervals of 10%
+			if (y % (height / 10) == 0) {
+				std::cout << "Rendering progress: " << (y * 100 / height) << "%\r";
+			}
+
 		}
 		float t = timer.dt();
-		std::cout << "rendeiring time: " << t << std::endl;
+		std::cout << "\nRendering time count "<<loopCount<<": " << t << std::endl;
+
+		fullFilename = filename + "_" + std::to_string(loopCount++) + ".png";
+		savePNG(fullFilename, &canvas);
 		canvas.present();
 
 
@@ -434,6 +613,11 @@ int main() {
 		{
 			break;
 		}
+		
+		if (loopCount % 2 == 0)
+			viewcamera.back();
+		else
+			viewcamera.left();
 
 	}
 
