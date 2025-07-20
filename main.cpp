@@ -162,6 +162,15 @@ Colour evaluateSphericalHarmonics(const Vec3& viewDir, Gaussian& gaussian) {
 	return c;
 }
 
+Colour viewIndependent(Gaussian& gaussian) {
+
+	Vec3 color = gaussian.ZeroSH * SH_C0;
+	Colour c;
+	c += color;
+	c += Vec3(0.5f);
+	return c;
+}
+
 Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 {
 	Colour color(0.0f, 0.0f, 0.0f);
@@ -190,6 +199,7 @@ Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 		}
 		Vec3 viewDir = (ray.o - gaussian.pos).normalize();
 		Colour SHColor = evaluateSphericalHarmonics(viewDir, gaussian);
+		//Colour SHColor = viewIndependent(gaussian);
 
 		color = color + (SHColor * alpha * tr);
 		//color = color.normalize();
@@ -236,7 +246,7 @@ void printAllGaussianDetails(std::vector<Gaussian>& gaussians) {
 }
 
 void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
-	happly::PLYData plyIn("point_cloud.ply");
+	happly::PLYData plyIn(filename.c_str());
 	std::vector<float> elementA_prop1 = plyIn.getElement("vertex").getProperty<float>("x");
 	std::vector<float> elementA_prop2 = plyIn.getElement("vertex").getProperty<float>("y");
 	std::vector<float> elementA_prop3 = plyIn.getElement("vertex").getProperty<float>("z");
@@ -331,6 +341,38 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 
 
 	//printing to file
+
+}
+
+void testScaleActivation() {
+	happly::PLYData plyIn("point_cloud.ply");
+	std::vector<float> elementA_prop1 = plyIn.getElement("vertex").getProperty<float>("scale_0");
+	std::vector<float> elementA_prop2 = plyIn.getElement("vertex").getProperty<float>("scale_1");
+	std::vector<float> elementA_prop3 = plyIn.getElement("vertex").getProperty<float>("scale_2");
+
+	float maxScale = 0;
+	float maxExpScale = 0;
+	float maxSigScale = 0;
+
+
+	//for (size_t i = 0; i < elementA_prop1.size(); i++) {
+	for (size_t i = 0; i < 50; i++) {
+		Vec3 scale =  Vec3(elementA_prop1[i], elementA_prop2[i], elementA_prop3[i]);
+
+		Vec3 expScale = scale.exponent();
+		expScale = expScale * 10.f;
+		Vec3 sigScale = scale.Sigmoid();
+		sigScale = sigScale * 10.f;
+		std::cout << "Scale: " << scale.x << ", " << scale.y << ", " << scale.z << " ExScale: " << expScale.x << ", " << expScale.y << ", " << expScale.z << " Sigmoid Scale: " << sigScale.x << ", " << sigScale.y << ", " << sigScale.z << std::endl;
+		std::cout << std::endl;
+
+		maxScale = (std::max)(maxScale, scale._max());
+		maxExpScale = (std::max)(maxExpScale, expScale._max());
+		maxSigScale = (std::max)(maxSigScale, sigScale._max());
+	}
+	std::cout << "Max Scale: " << maxScale << std::endl;
+	std::cout << "Max Exponential Scale: " << maxExpScale << std::endl;
+	std::cout << "Max Sigmoid Scale: " << maxSigScale << std::endl;
 
 }
 
@@ -505,6 +547,9 @@ int main() {
 	float fov = 45;
 
 
+	//testScaleActivation();
+	//return 0;
+
 	Matrix P = Matrix::perspective(0.001f, 10000.0f, (float)width / (float)height, fov);
 
 	Camera camera;
@@ -514,17 +559,17 @@ int main() {
 	
 	setCamera(camera, viewcamera);
 
-	for (int i = 0; i < 18; i++) {
-		//viewcamera.left();
+	for (int i = 0; i < 15; i++) {
+		viewcamera.left();
 	}
-	for (int i = 0; i < 5; i++) {
-		//viewcamera.back();
+	for (int i = 0; i < 30; i++) {
+		viewcamera.back();
 	}
 
 	std::cout << "Parsing PLY file...\n";
 	std::vector<Gaussian> gaussians{};
-	//parsePLY("point_cloud.ply", gaussians);
-	parsePLY("perf.ply", gaussians);
+	parsePLY("point_cloud.ply", gaussians);
+	//parsePLY("perf.ply", gaussians);
 	std::cout << "Done PLY file...\n";
 
 	std::cout << "Building BVH...\n";
@@ -547,7 +592,7 @@ int main() {
 
 	bool running = true;
 	int loopCount = 0;
-	std::string filename = "perf_image";
+	std::string filename = "compareViewInDep";
 	std::string fullFilename;
 	std::cout << "Rendering Gaussians...\n";
 

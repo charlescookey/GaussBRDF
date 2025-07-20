@@ -106,6 +106,10 @@ public:
 	Vec3 exponent() const {
 		return Vec3(expf(x), expf(y), expf(z));
 	}
+	
+	Vec3 Sigmoid() const {
+		return Vec3(sigmoid(x), sigmoid(y), sigmoid(z));
+	}
 
 	float _max()const {
 		//return (x > y ? (x > z ? x : z) : (y > z ? y : z));
