@@ -8,10 +8,31 @@
 #include <vector>
 #include <algorithm>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 // Stop warnings about M_PI being a double
 #pragma warning( disable : 4244)
 
 #define SQ(x) (x * x)
+
+#define SH_C0 0.28209479177387814f
+#define SH_C1 0.4886025119029199f
+
+#define SH_C2_0 1.0925484305920792f
+#define SH_C2_1 -1.0925484305920792f
+#define SH_C2_2 0.31539156525252005f
+#define SH_C2_3 -1.0925484305920792f
+#define SH_C2_4 0.5462742152960396f
+
+#define SH_C3_0 -0.5900435899266435f
+#define SH_C3_1 2.890611442640554f
+#define SH_C3_2 -0.4570457994644658f
+#define SH_C3_3 0.3731763325901154f
+#define SH_C3_4 -0.4570457994644658f
+#define SH_C3_5 1.445305721320277f
+#define SH_C3_6 -0.5900435899266435f
 
 float sigmoid(float x) {
 	return 1.0 / (1.0 + std::exp(-x));
@@ -121,129 +142,6 @@ public:
 		return std::min(std::min(x, y), z);
 	}
 };
-
-class Colour
-{
-public:
-	float r;
-	float g;
-	float b;
-	Colour() { r = 0; g = 0; b = 0; }
-	Colour(float _r, float _g, float _b)
-	{
-		r = _r;
-		g = _g;
-		b = _b;
-	}
-	Colour(unsigned char _r, unsigned char _g, unsigned char _b, unsigned char _a)
-	{
-		r = (float)_r / 255.0f;
-		g = (float)_g / 255.0f;
-		b = (float)_b / 255.0f;
-	}
-	void ToRGB(unsigned char& cr, unsigned char& cg, unsigned char& cb)
-	{
-		cr = (unsigned char)(r * 255);
-		cg = (unsigned char)(g * 255);
-		cb = (unsigned char)(b * 255);
-	}
-
-	void correct() {
-		if (std::isnan(r) || r < 0) r = 0;
-		if (std::isnan(g) || g < 0) g = 0;
-		if (std::isnan(b) || b < 0) b = 0;
-		if (r > 1.f) r = 1.f;
-		if (g > 1.f) g = 1.f;
-		if (b > 1.f) b = 1.f;
-	}
-	Colour operator+(const Colour& colour) const
-	{
-		Colour c;
-		c.r = r + colour.r;
-		c.g = g + colour.g;
-		c.b = b + colour.b;
-		return c;
-	}
-
-	Colour & operator+=(const Vec3& v) { r += v.x; g += v.y; b += v.z; return *this; }
-
-	Colour operator-(const Colour& colour) const
-	{
-		Colour c;
-		c.r = r - colour.r;
-		c.g = g - colour.g;
-		c.b = b - colour.b;
-		return c;
-	}
-	Colour operator*(const Colour& colour) const
-	{
-		Colour c;
-		c.r = r * colour.r;
-		c.g = g * colour.g;
-		c.b = b * colour.b;
-		return c;
-	}
-	Colour operator/(const Colour& colour) const
-	{
-		Colour c;
-		c.r = r / colour.r;
-		c.g = g / colour.g;
-		c.b = b / colour.b;
-		return c;
-	}
-	Colour operator*(const float v) const
-	{
-		Colour c;
-		c.r = r * v;
-		c.g = g * v;
-		c.b = b * v;
-		return c;
-	}
-	Colour operator/(const float v) const
-	{
-		Colour c;
-		c.r = r / v;
-		c.g = g / v;
-		c.b = b / v;
-		return c;
-	}
-	float Lum()
-	{
-		return ((0.2126f * r) + (0.7152f * g) + (0.0722f * b));
-	}
-
-	Colour normalize() const
-	{
-		float l = 1.0f / sqrtf((r * r) + (g * g) + (b * b));
-		return Colour(r * l, g * l, b * l);
-
-		//float maxValue = std::max(std::max(r, g), b);
-		//return maxValue > 0.0f ? Colour(r / maxValue, g / maxValue, b / maxValue) : Colour(0.0f, 0.0f, 0.0f);
-		
-	}
-};
-
-static float Dot(const Vec3 v1, const Vec3 v2)
-{
-	return ((v1.x * v2.x) + (v1.y * v2.y) + (v1.z * v2.z));
-}
-
-
-static Vec3 Cross(const Vec3& v1, const Vec3& v2)
-{
-	return Vec3((v1.y * v2.z) - (v1.z * v2.y), (v1.z * v2.x) - (v1.x * v2.z), (v1.x * v2.y) - (v1.y * v2.x));
-}
-
-static Vec3 Max(Vec3 a, Vec3 b)
-{
-	return Vec3(a.x > b.x ? a.x : b.x, a.y > b.y ? a.y : b.y, a.z > b.z ? a.z : b.z);
-}
-
-static Vec3 Min(Vec3 a, Vec3 b)
-{
-	return Vec3(a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y, a.z < b.z ? a.z : b.z);
-}
-
 
 class Matrix
 {
@@ -547,121 +445,171 @@ public:
 	}
 };
 
-class Mat3
+
+
+class Colour
 {
 public:
-	union
+	float r;
+	float g;
+	float b;
+	Colour() { r = 0; g = 0; b = 0; }
+	Colour(float _r, float _g, float _b)
 	{
-		float a[3][3];
-		float m[9];
-	};
-	Mat3() { identity(); }
-	Mat3(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
-	{
-		a[0][0] = m00;
-		a[0][1] = m01;
-		a[0][2] = m02;
-		a[1][0] = m10;
-		a[1][1] = m11;
-		a[1][2] = m12;
-		a[2][0] = m20;
-		a[2][1] = m21;
-		a[2][2] = m22;
+		r = _r;
+		g = _g;
+		b = _b;
 	}
-	void identity()
+	Colour(unsigned char _r, unsigned char _g, unsigned char _b, unsigned char _a)
 	{
-		memset(m, 0, 9 * sizeof(float));
-		m[0] = 1.0f;
-		m[4] = 1.0f;
-		m[8] = 1.0f;
+		r = (float)_r / 255.0f;
+		g = (float)_g / 255.0f;
+		b = (float)_b / 255.0f;
+	}
+	void ToRGB(unsigned char& cr, unsigned char& cg, unsigned char& cb)
+	{
+		cr = (unsigned char)(r * 255);
+		cg = (unsigned char)(g * 255);
+		cb = (unsigned char)(b * 255);
 	}
 
-	void diagonal(Vec3 v)
+	Colour operator+(const Colour& colour) const
 	{
-		memset(m, 0, 9 * sizeof(float));
-		m[0] = v.x;
-		m[4] = v.y;
-		m[8] = v.z;
+		Colour c;
+		c.r = r + colour.r;
+		c.g = g + colour.g;
+		c.b = b + colour.b;
+		return c;
 	}
 
-	Mat3 transpose()
-	{
-		return Mat3(a[0][0], a[1][0], a[2][0],
-			a[0][1], a[1][1], a[2][1],
-			a[0][2], a[1][2], a[2][2]);
-	}
-	float& operator[](int index)
-	{
-		return m[index];
-	}
-
-	Mat3 mul(const Mat3& matrix) const
-	{
-		Mat3 ret;
-
-		ret.m[0] = m[0] * matrix.m[0] + m[3] * matrix.m[1] + m[6] * matrix.m[2];
-		ret.m[1] = m[1] * matrix.m[0] + m[4] * matrix.m[1] + m[7] * matrix.m[2];
-		ret.m[2] = m[2] * matrix.m[0] + m[5] * matrix.m[1] + m[8] * matrix.m[2];
-
-		ret.m[3] = m[0] * matrix.m[3] + m[3] * matrix.m[4] + m[6] * matrix.m[5];
-		ret.m[4] = m[1] * matrix.m[3] + m[4] * matrix.m[4] + m[7] * matrix.m[5];
-		ret.m[5] = m[2] * matrix.m[3] + m[5] * matrix.m[4] + m[8] * matrix.m[5];
-
-		ret.m[6] = m[0] * matrix.m[6] + m[3] * matrix.m[7] + m[6] * matrix.m[8];
-		ret.m[7] = m[1] * matrix.m[6] + m[4] * matrix.m[7] + m[7] * matrix.m[8];
-		ret.m[8] = m[2] * matrix.m[6] + m[5] * matrix.m[7] + m[8] * matrix.m[8];
-
-		return ret;
-	}
-	Mat3 operator*(const Mat3& matrix)
-	{
-		return mul(matrix);
-	}
-	Vec3 mulRowVec(const Vec3& v)
-	{
-		return Vec3(
-			(v.x * m[0] + v.y * m[3] + v.z * m[6]),
-			(v.x * m[1] + v.y * m[4] + v.z * m[7]),
-			(v.x * m[2] + v.y * m[5] + v.z * m[8]));
-	}
+	Colour & operator+=(const Vec3& v) { r += v.x; g += v.y; b += v.z; return *this; }
 	
-	Mat3 operator=(const Mat3& matrix)
+	Colour & operator+=(const glm::vec3& v) { r += v.x; g += v.y; b += v.z; return *this; }
+
+	Colour operator-(const Colour& colour) const
 	{
-		memcpy(m, matrix.m, sizeof(float) * 9);
-		return (*this);
+		Colour c;
+		c.r = r - colour.r;
+		c.g = g - colour.g;
+		c.b = b - colour.b;
+		return c;
+	}
+	Colour operator*(const Colour& colour) const
+	{
+		Colour c;
+		c.r = r * colour.r;
+		c.g = g * colour.g;
+		c.b = b * colour.b;
+		return c;
+	}
+	Colour operator/(const Colour& colour) const
+	{
+		Colour c;
+		c.r = r / colour.r;
+		c.g = g / colour.g;
+		c.b = b / colour.b;
+		return c;
+	}
+	Colour operator*(const float v) const
+	{
+		Colour c;
+		c.r = r * v;
+		c.g = g * v;
+		c.b = b * v;
+		return c;
+	}
+	Colour operator/(const float v) const
+	{
+		Colour c;
+		c.r = r / v;
+		c.g = g / v;
+		c.b = b / v;
+		return c;
+	}
+	float Lum()
+	{
+		return ((0.2126f * r) + (0.7152f * g) + (0.0722f * b));
 	}
 
-	static Mat3 QuartToMatrix(const Vec3& q) {
-		float x = q.x, y = q.y, z = q.z, w = q.w;
-		return Mat3{
-			1 - 2 *y*y - 2*z*z,  2*x*y - 2*z*w,      2*x*z + 2*y*w,
-			2*x*y + 2*z*w,      1 - 2*x*x - 2*z*z,  2*y*z - 2*x*w,
-			2*x*z - 2*y*w,      2*y*z + 2*x*w,      1 - 2*x*x - 2*y*y
-		};
+	Colour normalize() const
+	{
+		float l = 1.0f / sqrtf((r * r) + (g * g) + (b * b));
+		return Colour(r * l, g * l, b * l);
+
+		//float maxValue = std::max(std::max(r, g), b);
+		//return maxValue > 0.0f ? Colour(r / maxValue, g / maxValue, b / maxValue) : Colour(0.0f, 0.0f, 0.0f);
+		
 	}
-	
 };
+
+static float Dot(const Vec3 v1, const Vec3 v2)
+{
+	return ((v1.x * v2.x) + (v1.y * v2.y) + (v1.z * v2.z));
+}
+
+
+static Vec3 Cross(const Vec3& v1, const Vec3& v2)
+{
+	return Vec3((v1.y * v2.z) - (v1.z * v2.y), (v1.z * v2.x) - (v1.x * v2.z), (v1.x * v2.y) - (v1.y * v2.x));
+}
+
+static glm::vec3 Max(glm::vec3 a, glm::vec3 b)
+{
+	return glm::vec3(a.x > b.x ? a.x : b.x, a.y > b.y ? a.y : b.y, a.z > b.z ? a.z : b.z);
+}
+
+static glm::vec3 Min(glm::vec3 a, glm::vec3 b)
+{
+	return glm::vec3(a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y, a.z < b.z ? a.z : b.z);
+}
+
+static void correct(glm::vec3& c) {
+	if (std::isnan(c.r) || c.r < 0) c.r = 0;
+	if (std::isnan(c.g) || c.g < 0) c.g = 0;
+	if (std::isnan(c.b) || c.b < 0) c.b = 0;
+	if (c.r > 1.f) c.r = 1.f;
+	if (c.g > 1.f) c.g = 1.f;
+	if (c.b > 1.f) c.b = 1.f;
+}
+
+static void toneMap(glm::vec3& c) {
+	// --- Tone Mapping (Reinhard) ---
+	c.r = c.r / (1.0f + c.r);
+	c.g = c.g / (1.0f + c.g);
+	c.b = c.b / (1.0f + c.b);
+
+	// --- Gamma Correction (sRGB approx, gamma = 2.2) ---
+	c.r = powf(c.r, 1.0f / 2.2f);
+	c.g = powf(c.g, 1.0f / 2.2f);
+	c.b = powf(c.b, 1.0f / 2.2f);
+
+	// Optional: clamp to [0,1]
+	c.r = std::min(std::max(c.r, 0.0f), 1.0f);
+	c.g = std::min(std::max(c.g, 0.0f), 1.0f);
+	c.b = std::min(std::max(c.b, 0.0f), 1.0f);
+}
+
 
 class Ray
 {
 public:
-	Vec3 o;
-	Vec3 dir;
-	Vec3 invDir;
+	glm::vec3 o;
+	glm::vec3 dir;
+	glm::vec3 invDir;
 	Ray()
 	{
 	}
-	Ray(Vec3 _o, Vec3 _d)
+	Ray(glm::vec3 _o, glm::vec3 _d)
 	{
 		init(_o, _d);
 	}
-	void init(Vec3 _o, Vec3 _d)
+	void init(glm::vec3 _o, glm::vec3 _d)
 	{
 		o = _o;
 		dir = _d;
-		invDir = Vec3(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
+		invDir = glm::vec3(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
 	}
-	Vec3 at(const float t) const
+	glm::vec3 at(const float t) const
 	{
 		return (o + (dir * t));
 	}
@@ -673,25 +621,25 @@ public:
 class AABB
 {
 public:
-	Vec3 max;
-	Vec3 min;
+	glm::vec3 max;
+	glm::vec3 min;
 	AABB()
 	{
 		reset();
 	}
 	void reset()
 	{
-		max = Vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-		min = Vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+		max = glm::vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		min = glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX);
 	}
 
-	void set(Vec3 a, Vec3 b)
+	void set(glm::vec3 a, glm::vec3 b)
 	{
 		max = Max(a, b);
 		min = Min(a, b);
 	}
 
-	void extend(const Vec3 p)
+	void extend(const glm::vec3 p)
 	{
 		max = Max(max, p);
 		min = Min(min, p);
@@ -705,10 +653,10 @@ public:
 	// Add code here
 	bool rayAABB(const Ray& r, float& t)
 	{
-		Vec3 tmin = (min - r.o) * r.invDir;
-		Vec3 tmax = (max - r.o) * r.invDir;
-		Vec3 Tentry = Min(tmin, tmax);
-		Vec3 Texit = Max(tmin, tmax);
+		glm::vec3 tmin = (min - r.o) * r.invDir;
+		glm::vec3 tmax = (max - r.o) * r.invDir;
+		glm::vec3 Tentry = Min(tmin, tmax);
+		glm::vec3 Texit = Max(tmin, tmax);
 		float tentry = (std::max)(Tentry.x, (std::max)(Tentry.y, Tentry.z));
 		float texit = (std::min)(Texit.x, (std::min)(Texit.y, Texit.z));
 		t = (std::min)(tentry, texit);
@@ -717,10 +665,10 @@ public:
 	// Add code here
 	bool rayAABB(const Ray& r)
 	{
-		Vec3 tmin = (min - r.o) * r.invDir;
-		Vec3 tmax = (max - r.o) * r.invDir;
-		Vec3 Tentry = Min(tmin, tmax);
-		Vec3 Texit = Max(tmin, tmax);
+		glm::vec3 tmin = (min - r.o) * r.invDir;
+		glm::vec3 tmax = (max - r.o) * r.invDir;
+		glm::vec3 Tentry = Min(tmin, tmax);
+		glm::vec3 Texit = Max(tmin, tmax);
 		float tentry = (std::max)(Tentry.x, (std::max)(Tentry.y, Tentry.z));
 		float texit = (std::min)(Texit.x, (std::min)(Texit.y, Texit.z));
 
@@ -729,47 +677,85 @@ public:
 	// Add code here
 	float area()
 	{
-		Vec3 size = max - min;
+		glm::vec3 size = max - min;
 		return ((size.x * size.y) + (size.y * size.z) + (size.x * size.z)) * 2.0f;
 	}
 };
 
 struct Gaussian {
-	Vec3 pos;
-	Vec3 normal;
-	Vec3 ZeroSH;
-	Vec3 rotation;//Quarternions
-	Vec3 scale;
-	float opacity;
-	Colour color; // color of the gaussian, used for rendering
-	std::vector<float> higherSH;
-	AABB aabb; // when reading we sgoukd compute this from the position and scale
-	Mat3 covariance; // covariance matrix
-
-	void compute_gaussian_aabb() {
-		float max_sigma = std::expf(scale._max());
-		Vec3 radius(3.0f * max_sigma);
-		aabb.set(pos - radius, pos + radius);
-	}
-
-	void compute_gaussian_covariance() {
-		rotation = rotation.normalize();
-		Mat3 rotationMatrix = Mat3::QuartToMatrix(rotation);
-
-		Vec3 _scale = scale.exponent();
-		//_scale = _scale.normalize();
-		
-		Mat3 scaleMatrix;
-		scaleMatrix.diagonal(_scale);
-
-		covariance = rotationMatrix * scaleMatrix;
-
-		covariance = covariance * covariance.transpose();
-	}
-
 	//for debug
 	int index;
+
+	Colour color;
+
+	//test using glm
+	glm::vec3 _position;
+	glm::vec3 _scaleRaw;
+	glm::vec3 _scale;
+	glm::vec3 _scaleMuld;
+	glm::quat _rotation;
+	glm::vec3 _color;
+	glm::vec3 ZeroSH;
+	std::vector<float> higherSH;
+	
+	float opacity;
+	AABB aabb; 
+
+	glm::mat3 covariance3D;
+	glm::mat3 RawCovariance3D;
+	glm::mat3 RawCovariance3D_inv;
+	glm::mat3 inverse_covariance3D;
+
+	glm::mat3 R;
+
+	void compute_gaussian_aabb() {
+		float max_scale = std::max({ _scale.x, _scale.y, _scale.z });
+		//float max_sigma = std::expf(max_scale);
+
+		glm::vec3 radius(3.0f * max_scale);
+		//glm::vec3 radius(0.80f * max_scale);
+		
+		//Vec3 radius(0.10f * max_sigma);
+		aabb.set(_position - radius, _position + radius);
+	}
+
+	void compute_gaussian_covariance_glm() {
+		glm::mat3 S = glm::mat3(1.0f);
+		S[0][0] = _scale.x;
+		S[1][1] = _scale.y;
+		S[2][2] = _scale.z;
+
+		R = glm::mat3_cast(_rotation);
+
+		// Compute M = RS
+		glm::mat3 M = R * S;
+
+		covariance3D = M * glm::transpose(M);
+		inverse_covariance3D = glm::inverse(covariance3D + 0.001f * glm::mat3(1.0f));
+		//inverse_covariance3D = glm::inverse(covariance3D);
+		compute_gaussian_covariance_raw();
+	}
+	
+	void compute_gaussian_covariance_raw() {
+		glm::mat3 S = glm::mat3(1.0f);
+		S[0][0] = _scaleRaw.x;
+		S[1][1] = _scaleRaw.y;
+		S[2][2] = _scaleRaw.z;
+
+		glm::mat3 R = glm::mat3_cast(_rotation);
+
+		// Compute M = RS
+		glm::mat3 M = R * S;
+
+		covariance3D = M * glm::transpose(M);
+		RawCovariance3D_inv = glm::inverse(RawCovariance3D);
+	}
+
+	void viewIndependent() {
+		_color = (ZeroSH * SH_C0) + glm::vec3(0.5f);
+	}
 };
+
 
 
 
@@ -846,7 +832,7 @@ public:
 			float boundsMax = -FLT_MAX;
 
 			for (Gaussian* tri : triangles) {
-				float centroidPos = tri->pos.coords[a];
+				float centroidPos = tri->_position[a];
 				boundsMin = std::min(boundsMin, centroidPos);
 				boundsMax = std::max(boundsMax, centroidPos);
 			}
@@ -857,7 +843,7 @@ public:
 			float scale = BINS_COUNT / (boundsMax - boundsMin);
 
 			for (Gaussian* tri : triangles) {
-				float centroidPos = tri->pos.coords[a];
+				float centroidPos = tri->_position[a];
 				int binIdx = (std::min)(BINS_COUNT - 1, static_cast<int>((centroidPos - boundsMin) * scale));
 				bin[binIdx].triCount++;
 				bin[binIdx].bounds.extend(tri->aabb);
@@ -935,7 +921,7 @@ public:
 
 		std::vector<Gaussian*> leftTriangles, rightTriangles;
 		for (Gaussian* tri : triangles) {
-			if (tri->pos.coords[axis] < splitPos) {
+			if (tri->_position[axis] < splitPos) {
 				leftTriangles.push_back(tri);
 			}
 			else {
@@ -1033,7 +1019,7 @@ public:
 		if (l == nullptr && r == nullptr) {
 			for (Gaussian* a : triangles) {
 				std::cout << indent << "  Triangle " << triangleMap[a] << ": "
-					<< "v0=(" << a->pos.x << ", " << a->pos.y << ", " << a->pos.z << "))\n";
+					<< "v0=(" << a->_position.x << ", " << a->_position.y << ", " << a->_position.z << "))\n";
 			}
 		}
 
@@ -1146,8 +1132,11 @@ public:
 
 		dir = dcamera - origin;
 
+		glm::vec3 _origin = glm::vec3(origin.x, origin.y, origin.z);
+		glm::vec3 _dir = glm::vec3(dir.x, dir.y, dir.z);
 
-		return Ray(origin, dir);
+
+		return Ray(_origin, _dir);
 	}
 	bool projectOntoCamera(const Vec3& p, float& x, float& y)
 	{
