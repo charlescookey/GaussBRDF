@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 // Stop warnings about M_PI being a double
 #pragma warning( disable : 4244)
 
@@ -120,6 +123,11 @@ public:
 		//return (x < y ? (x < z ? x : z) : (y < z ? y : z));
 		return std::min(std::min(x, y), z);
 	}
+
+	glm::vec3 ToGlm() 
+	{
+		return glm::vec3(x, y, z);
+	}
 };
 
 class Colour
@@ -220,6 +228,11 @@ public:
 		//float maxValue = std::max(std::max(r, g), b);
 		//return maxValue > 0.0f ? Colour(r / maxValue, g / maxValue, b / maxValue) : Colour(0.0f, 0.0f, 0.0f);
 		
+	}
+
+	glm::vec3 ToGlm() const
+	{
+		return glm::vec3(r, g, b);
 	}
 };
 
@@ -639,6 +652,40 @@ public:
 			2*x*z - 2*y*w,      2*y*z + 2*x*w,      1 - 2*x*x - 2*y*y
 		};
 	}
+
+	//invert
+	Mat3 Inverse() const
+	{
+		Mat3 result;
+
+		float det =
+			a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) -
+			a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+			a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+
+		if (fabs(det) < 1e-8f)
+		{
+			// Singular matrix, cannot invert
+			std::cerr << "Warning: Matrix is not invertible.\n";
+			return result;  // Return identity or zero matrix
+		}
+
+		float invDet = 1.0f / det;
+
+		result.a[0][0] = (a[1][1] * a[2][2] - a[1][2] * a[2][1]) * invDet;
+		result.a[0][1] = -(a[0][1] * a[2][2] - a[0][2] * a[2][1]) * invDet;
+		result.a[0][2] = (a[0][1] * a[1][2] - a[0][2] * a[1][1]) * invDet;
+
+		result.a[1][0] = -(a[1][0] * a[2][2] - a[1][2] * a[2][0]) * invDet;
+		result.a[1][1] = (a[0][0] * a[2][2] - a[0][2] * a[2][0]) * invDet;
+		result.a[1][2] = -(a[0][0] * a[1][2] - a[0][2] * a[1][0]) * invDet;
+
+		result.a[2][0] = (a[1][0] * a[2][1] - a[1][1] * a[2][0]) * invDet;
+		result.a[2][1] = -(a[0][0] * a[2][1] - a[0][1] * a[2][0]) * invDet;
+		result.a[2][2] = (a[0][0] * a[1][1] - a[0][1] * a[1][0]) * invDet;
+
+		return result;
+	}
 	
 };
 
@@ -746,6 +793,9 @@ struct Gaussian {
 	AABB aabb; // when reading we sgoukd compute this from the position and scale
 	Mat3 covariance; // covariance matrix
 
+	glm::mat3 covariance3D;
+	glm::mat3 covariance3D_inv;
+
 	void compute_gaussian_aabb() {
 		float max_sigma = std::expf(scale._max());
 		Vec3 radius(3.0f * max_sigma);
@@ -765,6 +815,18 @@ struct Gaussian {
 		covariance = rotationMatrix * scaleMatrix;
 
 		covariance = covariance * covariance.transpose();
+
+		glm::mat3 S = glm::mat3(1.0f);
+		S[0][0] = scale.x;
+		S[1][1] = scale.y;
+		S[2][2] = scale.z;
+
+		glm::quat _rotation = glm::quat(rotation.x, rotation.y, rotation.z, rotation.w);
+		glm::mat3 R = glm::mat3_cast(_rotation);
+
+		glm::mat3 M = R * S;
+		covariance3D = glm::transpose(M) * M;
+		covariance3D_inv = glm::inverse(covariance3D);
 	}
 
 	//for debug

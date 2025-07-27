@@ -45,22 +45,35 @@ float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
 	
 	ray.dir = ray.dir.normalize();
 
+	glm::vec3 _r = r.ToGlm();
+	glm::vec3 _dir = ray.dir.ToGlm();
+
+	glm::vec3 __a = gaussian.covariance3D * _dir;
+	float a2 = glm::dot(__a, _dir);
+
 	Vec3 _a = gaussian.covariance.mulRowVec(ray.dir);
 	float a = _a.dot(ray.dir);
 
 	Vec3 _c = gaussian.covariance.mulRowVec(r);
 	float c = _c.dot(r);
 
+	glm::vec3 __c = gaussian.covariance3D * _r;
+	float c2 = glm::dot(__c, _r);
+
 
 	float b = _c.dot(ray.dir) ;
+	float b2 = glm::dot(__c, _dir);
 
 	float firstPart = std::expf((SQ(b) / (2 * a) - (c / 2)));
+	float firstPart2 = std::expf((SQ(b2) / (2 * a2) - (c2 / 2)));
 
 	float secondPart = std::sqrtf(M_PI / (2*a));
+	float secondPart2 = std::sqrtf(M_PI / (2 * a2));
 
 	//std::cout << "Gaussian Integral: " << firstPart << " * " << secondPart << " * " << gaussian.opacity ;
 
-	return firstPart * secondPart;
+	//return firstPart * secondPart;
+	return firstPart2 * secondPart2;
 }
 
 void evaluateSphericalHarmonics(const Vec3& viewDir, std::vector<Gaussian>& gaussians) {
@@ -539,10 +552,10 @@ int main() {
 	GamesEngineeringBase::Timer tim;
 
 	//can be called inside camera
-	int width = 1024;
-	//int width = 200;
-	int height = 768;
-	//int height = 200;
+	//int width = 1024;
+	int width = 500;
+	//int height = 768;
+	int height = 500;
 	canvas.create(width, height, "Charles GE");
 	float fov = 45;
 
@@ -592,7 +605,7 @@ int main() {
 
 	bool running = true;
 	int loopCount = 0;
-	std::string filename = "compareViewInDep";
+	std::string filename = "glm_test";
 	std::string fullFilename;
 	std::cout << "Rendering Gaussians...\n";
 
