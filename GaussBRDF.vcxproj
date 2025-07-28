@@ -131,8 +131,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="confirm.h" />
     <ClInclude Include="GamesEngineeringBase.h" />
     <ClInclude Include="happly.h" />
     <ClInclude Include="Imaging.h" />
