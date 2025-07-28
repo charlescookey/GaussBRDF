@@ -1313,4 +1313,25 @@ public:
 		V = V.invert();
 		camera->updateView(V);
 	}
+	void strafeLeft()
+	{
+		Vec3 dir = (to - from).normalize();  // forward direction
+		Vec3 right = dir.cross(up).normalize(); // local right axis
+		Vec3 offset = right * movespeed;
+
+		from = from - offset;
+		to = to - offset;
+		updateCamera();
+	}
+
+	void strafeRight()
+	{
+		Vec3 dir = (to - from).normalize();
+		Vec3 right = dir.cross(up).normalize();
+		Vec3 offset = right * movespeed;
+
+		from = from + offset;
+		to = to + offset;
+		updateCamera();
+	}
 };
