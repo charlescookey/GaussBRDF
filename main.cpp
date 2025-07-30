@@ -40,16 +40,10 @@ float GaussianDensity(Ray& ray, const Gaussian& gaussian)
 	return expf(-0.5f * dist) * gaussian.opacity;
 }
 
-float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
+float computeGaussianIntegral_old(Ray& ray, Gaussian& gaussian) {
 	Vec3 r = gaussian.pos - ray.o;
-	
 	ray.dir = ray.dir.normalize();
 
-	glm::vec3 _r = r.ToGlm();
-	glm::vec3 _dir = ray.dir.ToGlm();
-
-	glm::vec3 __a = gaussian.covariance3D * _dir;
-	float a2 = glm::dot(__a, _dir);
 
 	Vec3 _a = gaussian.covariance.mulRowVec(ray.dir);
 	float a = _a.dot(ray.dir);
@@ -57,23 +51,33 @@ float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
 	Vec3 _c = gaussian.covariance.mulRowVec(r);
 	float c = _c.dot(r);
 
-	glm::vec3 __c = gaussian.covariance3D * _r;
+	float b = _c.dot(ray.dir) ;
+	float firstPart = std::expf((SQ(b) / (2 * a) - (c / 2)));
+	float secondPart = std::sqrtf(M_PI / (2*a));
+	
+	return firstPart * secondPart;
+}
+
+float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
+	Vec3 r = gaussian.pos - ray.o;
+	ray.dir = ray.dir.normalize();
+	glm::vec3 _r = r.ToGlm();
+	glm::vec3 _dir = ray.dir.ToGlm();
+
+	glm::vec3 __a = gaussian.covariance3D_inv * _dir;
+	float a2 = glm::dot(__a, _dir);
+
+	glm::vec3 __c = gaussian.covariance3D_inv * _r;
 	float c2 = glm::dot(__c, _r);
 
 
-	float b = _c.dot(ray.dir) ;
 	float b2 = glm::dot(__c, _dir);
 
-	float firstPart = std::expf((SQ(b) / (2 * a) - (c / 2)));
 	float firstPart2 = std::expf((SQ(b2) / (2 * a2) - (c2 / 2)));
 
-	float secondPart = std::sqrtf(M_PI / (2*a));
 	float secondPart2 = std::sqrtf(M_PI / (2 * a2));
 
-	//std::cout << "Gaussian Integral: " << firstPart << " * " << secondPart << " * " << gaussian.opacity ;
-
-	//return firstPart * secondPart;
-	return firstPart2 * secondPart2 * 0.5;
+	return firstPart2 * secondPart2 * 0.5f;
 }
 
 void evaluateSphericalHarmonics(const Vec3& viewDir, std::vector<Gaussian>& gaussians) {
@@ -424,7 +428,7 @@ int main() {
 
 	bool running = true;
 	int loopCount = 0;
-	std::string filename = "19l_f10_1d_sl3_l3_4f_SH_half";
+	std::string filename = "19l_f10_1d_sl3_l3_4f_SH_0.5_half_inv";
 	std::string fullFilename;
 	std::cout << "Rendering Gaussians...\n";
 
