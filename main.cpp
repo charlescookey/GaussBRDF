@@ -51,23 +51,23 @@ float computeGaussianIntegral_old(Ray& ray, Gaussian& gaussian) {
 	Vec3 _c = gaussian.covariance.mulRowVec(r);
 	float c = _c.dot(r);
 
-	float b = _c.dot(ray.dir) ;
+	float b = _c.dot(ray.dir);
 	float firstPart = std::expf((SQ(b) / (2 * a) - (c / 2)));
-	float secondPart = std::sqrtf(M_PI / (2*a));
-	
+	float secondPart = std::sqrtf(M_PI / (2 * a));
+
 	return firstPart * secondPart;
 }
 
-float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
+float computeGaussianIntegral(Ray& ray, Gaussian& gaussian) {
 	Vec3 r = gaussian.pos - ray.o;
 	ray.dir = ray.dir.normalize();
 	glm::vec3 _r = r.ToGlm();
 	glm::vec3 _dir = ray.dir.ToGlm();
 
-	glm::vec3 __a = gaussian.covariance3D_inv * _dir;
+	glm::vec3 __a = gaussian.covariance3D * _dir;
 	float a2 = glm::dot(__a, _dir);
 
-	glm::vec3 __c = gaussian.covariance3D_inv * _r;
+	glm::vec3 __c = gaussian.covariance3D * _r;
 	float c2 = glm::dot(__c, _r);
 
 
@@ -77,57 +77,7 @@ float computeGaussianIntegral(Ray& ray , Gaussian& gaussian) {
 
 	float secondPart2 = std::sqrtf(M_PI / (2 * a2));
 
-	return firstPart2 * secondPart2 * 0.5f;
-}
-
-void evaluateSphericalHarmonics(const Vec3& viewDir, std::vector<Gaussian>& gaussians) {
-	Vec3 dir = viewDir.normalize();
-	float x = dir.x;
-	float y = dir.y;
-	float z = dir.z;
-
-	float xx = x * x;
-	float yy = y * y;
-	float zz = z * z;
-	float xy = x * y;
-	float xz = x * z;
-	float yz = y * z;
-
-	for (Gaussian& gaussian : gaussians) {
-		Vec3 color =
-			Vec3(gaussian.higherSH[0], gaussian.higherSH[1], gaussian.higherSH[2]) * SH_C0;
-
-		color = color
-
-			- (Vec3(gaussian.higherSH[0], gaussian.higherSH[1], gaussian.higherSH[2]) * SH_C1 * y)
-			+ (Vec3(gaussian.higherSH[3], gaussian.higherSH[4], gaussian.higherSH[5]) * SH_C1 * z)
-			- (Vec3(gaussian.higherSH[6], gaussian.higherSH[7], gaussian.higherSH[8]) * SH_C1 * x);
-
-		color = color
-
-
-			+ (Vec3(gaussian.higherSH[9], gaussian.higherSH[10], gaussian.higherSH[11]) * SH_C2_0 * xy)
-			+ (Vec3(gaussian.higherSH[12], gaussian.higherSH[13], gaussian.higherSH[14]) * SH_C2_1 * yz)
-			+ (Vec3(gaussian.higherSH[15], gaussian.higherSH[16], gaussian.higherSH[17]) * SH_C2_2 * (2.0f * zz - xx - yy))
-			+ (Vec3(gaussian.higherSH[18], gaussian.higherSH[19], gaussian.higherSH[20]) * SH_C2_3 * xz)
-			+ (Vec3(gaussian.higherSH[21], gaussian.higherSH[22], gaussian.higherSH[23]) * SH_C2_4 * (xx - yy));
-
-		color = color
-
-			+ (Vec3(gaussian.higherSH[24], gaussian.higherSH[25], gaussian.higherSH[26]) * SH_C3_0 * y * (3.0f * xx - yy))
-			+ (Vec3(gaussian.higherSH[27], gaussian.higherSH[28], gaussian.higherSH[29]) * SH_C3_1 * xy * z)
-			+ (Vec3(gaussian.higherSH[30], gaussian.higherSH[31], gaussian.higherSH[32]) * SH_C3_2 * y * (4.0f * zz - xx - yy))
-			+ (Vec3(gaussian.higherSH[33], gaussian.higherSH[34], gaussian.higherSH[35]) * SH_C3_3 * z * (2.0f * zz - 3.0f * xx - 3.0f * yy))
-			+ (Vec3(gaussian.higherSH[36], gaussian.higherSH[37], gaussian.higherSH[38]) * SH_C3_4 * x * (4.0f * zz - xx - yy))
-			+ (Vec3(gaussian.higherSH[39], gaussian.higherSH[40], gaussian.higherSH[41]) * SH_C3_5 * z * (xx - yy))
-			+ (Vec3(gaussian.higherSH[42], gaussian.higherSH[43], gaussian.higherSH[44]) * SH_C3_6 * x * (xx - 3.0f * yy) );
-
-		gaussian.color += color;
-		//gaussian.color += Vec3(0.5f);
-
-
-		//std::cout<<"Gaussian color : (" << gaussian.color.r << ", " << gaussian.color.g << ", " << gaussian.color.b << ")" << std::endl;
-	}
+	return firstPart2 * secondPart2 * 0.1;
 }
 
 Colour evaluateSphericalHarmonics(const Vec3& viewDir, Gaussian& gaussian) {
@@ -195,8 +145,8 @@ Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 
 	std::vector<Gaussian> sorted = gaussians;
 	std::sort(sorted.begin(), sorted.end(), [&](const Gaussian& a, const Gaussian& b) {
-		return (a.pos - ray.o).lengthSq()< (b.pos - ray.o).lengthSq();
-	});
+		return (a.pos - ray.o).lengthSq() < (b.pos - ray.o).lengthSq();
+		});
 
 	for (Gaussian& gaussian : sorted) {
 		float density = computeGaussianIntegral(ray, gaussian);
@@ -205,30 +155,27 @@ Colour GaussianColor(Ray& ray, std::vector<Gaussian> gaussians)
 		density *= gaussian.opacity;
 
 		float alpha = 1.0f - exp(-density);
-		
+
 
 		if (tr < 0.001f) {
 			break; // Stop if transmittance is very low
 		}
 
-		if (density < 1e-6f){
+		if (density < 1e-6f) {
 			continue; // Skip if density is negligible
 		}
 		Vec3 viewDir = (ray.o - gaussian.pos).normalize();
-		Colour SHColor = evaluateSphericalHarmonics(viewDir, gaussian);
-		//Colour SHColor = viewIndependent(gaussian);
+		//Colour SHColor = evaluateSphericalHarmonics(viewDir, gaussian);
+		Colour SHColor = viewIndependent(gaussian);
 
 		color = color + (SHColor * alpha * tr);
 		//color = color.normalize();
 		color.correct();
 		tr *= (1.0f - alpha); // Update transmittance
-		//std::cout << " density: " << density <<" alpha: " << alpha<< " Transmittance: " << tr << std::endl;
-		//std::cout << "Color: (" << color.r << ", " << color.g << ", " << color.b << ")" << " gaussian color: (" << gaussian.color.r << ", " << gaussian.color.g << ", " << gaussian.color.b << ")" << std::endl;
-
 	}
 	return color;
 }
-	
+
 void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 	happly::PLYData plyIn(filename.c_str());
 	std::vector<float> elementA_prop1 = plyIn.getElement("vertex").getProperty<float>("x");
@@ -283,7 +230,7 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 	std::vector<float> elementA_prop4 = plyIn.getElement("vertex").getProperty<float>("opacity");
 
 	for (size_t i = 0; i < elementA_prop1.size(); i++) {
-		gaussians[i].opacity =	sigmoid(elementA_prop4[i]);
+		gaussians[i].opacity = sigmoid(elementA_prop4[i]);
 		//std::cout << "Opacity: " << gaussians[i].opacity << std::endl;
 	}
 
@@ -316,7 +263,7 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 		std::cout << gaussians[i].ZeroSH.x << ", " << gaussians[i].ZeroSH.y << ", " << gaussians[i].ZeroSH.z << std::endl;
 
 		for (float a : gaussians[i].higherSH) {
-			
+
 			std::cout << a << ", ";
 		}
 		std::cout << std::endl;
@@ -329,24 +276,23 @@ void parsePLY(std::string filename, std::vector<Gaussian>& gaussians) {
 }
 
 
-void setCamera(Camera &camera, RTCamera& viewCamera) {
+void setCamera(Camera& camera, RTCamera& viewCamera) {
 	//Vec3 from(4.63008f, 2.00661f, 2.06466f);
-	Vec3 from(4.63008f, 2.00661f, 20.06466f);
+	Vec3 from(2.30313f, -0.358187f, 5.87999f);
 	viewCamera.from = from;
 
-	//float pitch = -21.5944f * (M_PI / 180.0f);  // X rotation
-	float pitch = -5.5944f * (M_PI / 180.0f);  // X rotation
-	//float yaw = 65.9668f * (M_PI / 180.0f);     // Y rotation
-	float yaw = 11.9668f * (M_PI / 180.0f);     // Y rotation
-	float roll = 0.0f * (M_PI / 180.0f);        // Z rotation
 
-	Vec3 forward(
-		cos(pitch) * cos(yaw),
-		sin(pitch),
-		cos(pitch) * sin(yaw)
-	);
+	//float pitch = -5.5944f * (M_PI / 180.0f);  // X rotation
+	//float yaw = 11.9668f * (M_PI / 180.0f);     // Y rotation
+	//float roll = 0.0f * (M_PI / 180.0f);        // Z rotation
 
-	Vec3 to = from + forward;
+	//Vec3 forward(
+	//	cos(pitch) * cos(yaw),
+	//	sin(pitch),
+	//	cos(pitch) * sin(yaw)
+	//);
+
+	Vec3 to = Vec3(2.16406, -0.455673, 4.89452);
 	viewCamera.to = to;
 
 	Vec3 up(0.0f, 1.0f, 0.0f);
@@ -368,40 +314,16 @@ int main() {
 	canvas.create(width, height, "Charles GE");
 	float fov = 45;
 
-
-	//testScaleActivation();
-	//return 0;
-
 	Matrix P = Matrix::perspective(0.001f, 10000.0f, (float)width / (float)height, fov);
 
 	Camera camera;
 	camera.init(P, width, height);
 
 	RTCamera viewcamera;
-	
+
 	setCamera(camera, viewcamera);
 
-	for (int i = 0; i < 19; i++) {
-		viewcamera.left();
-	}
-	for (int i = 0; i < 10; i++) {
-		viewcamera.forward();
-	}
-	for (int i = 0; i < 1; i++) {
-		viewcamera.flyDown();
-	}
-	
-	for (int i = 0; i < 3; i++) {
-		viewcamera.strafeLeft();
-	}
-	for (int i = 0; i < 3; i++) {
-		viewcamera.left();
-	}
 
-	for (int i = 0; i < 4; i++) {
-		viewcamera.forward();
-	}
-	
 	std::cout << "Parsing PLY file...\n";
 	std::vector<Gaussian> gaussians{};
 	parsePLY("point_cloud.ply", gaussians);
@@ -418,17 +340,9 @@ int main() {
 	bvh.printStat();
 	GamesEngineeringBase::Timer timer;
 
-
-	//std::cout << "Evaluating Spherical Harmonics:\n";
-	//evaluateSphericalHarmonics(camera.viewDirection, gaussians);
-
-
-	//testDensityandColor(gaussians , camera, viewcamera,bvh);
-	
-
 	bool running = true;
 	int loopCount = 0;
-	std::string filename = "19l_f10_1d_sl3_l3_4f_SH_0.5_half_inv";
+	std::string filename = "500x500_integral_x0_1";
 	std::string fullFilename;
 	std::cout << "Rendering Gaussians...\n";
 
@@ -465,16 +379,16 @@ int main() {
 
 		}
 		float t = timer.dt();
-		std::cout << "\nRendering time count "<<loopCount<<": " << t << std::endl;
+		std::cout << "\nRendering time count " << loopCount << ": " << t << std::endl;
 
 		fullFilename = filename + "_" + std::to_string(loopCount++) + ".png";
 		savePNG(fullFilename, &canvas);
 		canvas.present();
 
-		
+
 
 		//print froma and to
-		outFile << loopCount <<" - Camera From: (" << viewcamera.from.x << ", " << viewcamera.from.y << ", " << viewcamera.from.z << ")"
+		outFile << loopCount << " - Camera From: (" << viewcamera.from.x << ", " << viewcamera.from.y << ", " << viewcamera.from.z << ")"
 			<< " To: (" << viewcamera.to.x << ", " << viewcamera.to.y << ", " << viewcamera.to.z << ")"
 			<< " Up: (" << viewcamera.up.x << ", " << viewcamera.up.y << ", " << viewcamera.up.z << ")"
 			<< std::endl;
@@ -511,8 +425,8 @@ int main() {
 		{
 			break;
 		}
-		
-		
+
+
 		viewcamera.strafeRight();
 
 

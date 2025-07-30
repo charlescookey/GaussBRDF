@@ -109,7 +109,7 @@ public:
 	Vec3 exponent() const {
 		return Vec3(expf(x), expf(y), expf(z));
 	}
-	
+
 	Vec3 Sigmoid() const {
 		return Vec3(sigmoid(x), sigmoid(y), sigmoid(z));
 	}
@@ -124,7 +124,7 @@ public:
 		return std::min(std::min(x, y), z);
 	}
 
-	glm::vec3 ToGlm() 
+	glm::vec3 ToGlm()
 	{
 		return glm::vec3(x, y, z);
 	}
@@ -173,7 +173,7 @@ public:
 		return c;
 	}
 
-	Colour & operator+=(const Vec3& v) { r += v.x; g += v.y; b += v.z; return *this; }
+	Colour& operator+=(const Vec3& v) { r += v.x; g += v.y; b += v.z; return *this; }
 
 	Colour operator-(const Colour& colour) const
 	{
@@ -227,7 +227,7 @@ public:
 
 		//float maxValue = std::max(std::max(r, g), b);
 		//return maxValue > 0.0f ? Colour(r / maxValue, g / maxValue, b / maxValue) : Colour(0.0f, 0.0f, 0.0f);
-		
+
 	}
 
 	glm::vec3 ToGlm() const
@@ -637,7 +637,7 @@ public:
 			(v.x * m[1] + v.y * m[4] + v.z * m[7]),
 			(v.x * m[2] + v.y * m[5] + v.z * m[8]));
 	}
-	
+
 	Mat3 operator=(const Mat3& matrix)
 	{
 		memcpy(m, matrix.m, sizeof(float) * 9);
@@ -647,9 +647,9 @@ public:
 	static Mat3 QuartToMatrix(const Vec3& q) {
 		float x = q.x, y = q.y, z = q.z, w = q.w;
 		return Mat3{
-			1 - 2 *y*y - 2*z*z,  2*x*y - 2*z*w,      2*x*z + 2*y*w,
-			2*x*y + 2*z*w,      1 - 2*x*x - 2*z*z,  2*y*z - 2*x*w,
-			2*x*z - 2*y*w,      2*y*z + 2*x*w,      1 - 2*x*x - 2*y*y
+			1 - 2 * y * y - 2 * z * z,  2 * x * y - 2 * z * w,      2 * x * z + 2 * y * w,
+			2 * x * y + 2 * z * w,      1 - 2 * x * x - 2 * z * z,  2 * y * z - 2 * x * w,
+			2 * x * z - 2 * y * w,      2 * y * z + 2 * x * w,      1 - 2 * x * x - 2 * y * y
 		};
 	}
 
@@ -686,7 +686,7 @@ public:
 
 		return result;
 	}
-	
+
 };
 
 class Ray
@@ -808,7 +808,7 @@ struct Gaussian {
 
 		Vec3 _scale = scale.exponent();
 		//_scale = _scale.normalize();
-		
+
 		Mat3 scaleMatrix;
 		scaleMatrix.diagonal(_scale);
 
@@ -1069,7 +1069,7 @@ public:
 
 		if (l == nullptr && r == nullptr) {
 			for (Gaussian* tri : triangles) {
-				if (tri->aabb.rayAABB(ray, t) ){
+				if (tri->aabb.rayAABB(ray, t)) {
 					//return false;
 				}
 			}
@@ -1142,7 +1142,7 @@ public:
 		std::cout << "Number of nodes with more than " << maxCheckSize << " triangles: " << nodeAbove << "\n";
 	}
 
-	void checkTraverse(int depth =0)
+	void checkTraverse(int depth = 0)
 	{
 		maxDepth = (std::max)(maxDepth, depth);
 		if (l == nullptr && r == nullptr) {
